@@ -1,0 +1,8 @@
+{
+  "name": "Tareas Offline",
+  "description": "A clean, modern Android To-Do application with task management, categories, priorities, and local Room persistence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
