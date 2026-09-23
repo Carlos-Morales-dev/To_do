@@ -73,4 +73,10 @@ interface TareaDao {
      */
     @Query("DELETE FROM tareas WHERE estado_completado = 1")
     suspend fun eliminarCompletadas()
+
+    /**
+     * Elimina todas las tareas asociadas a una categoría específica.
+     */
+    @Query("DELETE FROM tareas WHERE categoria = :categoria")
+    suspend fun deleteByCategoria(categoria: String)
 }

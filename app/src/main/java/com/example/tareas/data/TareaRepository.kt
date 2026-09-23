@@ -72,4 +72,11 @@ class TareaRepository(private val tareaDao: TareaDao) {
     suspend fun eliminarCompletadas() {
         tareaDao.eliminarCompletadas()
     }
+
+    /**
+     * Elimina todas las tareas asociadas a una categoría.
+     */
+    suspend fun deleteByCategoria(categoria: String) {
+        tareaDao.deleteByCategoria(categoria)
+    }
 }

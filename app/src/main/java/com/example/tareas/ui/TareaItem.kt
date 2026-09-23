@@ -2,6 +2,7 @@ package com.example.tareas.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -89,6 +90,11 @@ fun TareaItem(
             .clickable { onToggleCompletado() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        border = BorderStroke(
+            1.dp,
+            if (tarea.estadoCompletado) MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+        ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = if (tarea.estadoCompletado) 0.dp else 2.dp
         )

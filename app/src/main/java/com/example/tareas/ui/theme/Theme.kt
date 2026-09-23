@@ -11,18 +11,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
-    primary = BrandPrimary,
-    onPrimary = BrandOnPrimary,
-    primaryContainer = BrandPrimaryContainer,
-    onPrimaryContainer = BrandOnPrimaryContainer,
-    secondary = BrandSecondary,
-    onSecondary = BrandOnSecondary,
-    secondaryContainer = BrandSecondaryContainer,
-    onSecondaryContainer = BrandOnSecondaryContainer,
-    tertiary = BrandTertiary,
-    onTertiary = BrandOnTertiary,
-    tertiaryContainer = BrandTertiaryContainer,
-    onTertiaryContainer = BrandOnTertiaryContainer,
+    primary = SapphirePrimary,
+    onPrimary = SapphireOnPrimary,
+    primaryContainer = SapphirePrimaryContainer,
+    onPrimaryContainer = SapphireOnPrimaryContainer,
+    secondary = SapphireSecondary,
+    onSecondary = SapphireOnSecondary,
+    secondaryContainer = SapphireSecondaryContainer,
+    onSecondaryContainer = SapphireOnSecondaryContainer,
+    tertiary = SapphireTertiary,
+    onTertiary = SapphireOnTertiary,
+    tertiaryContainer = SapphireTertiaryContainer,
+    onTertiaryContainer = SapphireOnTertiaryContainer,
     background = BackgroundLight,
     onBackground = OnBackgroundLight,
     surface = SurfaceLight,
@@ -31,10 +31,31 @@ private val LightColorScheme = lightColorScheme(
     onSurfaceVariant = OnSurfaceVariantLight
 )
 
+private val DarkColorScheme = darkColorScheme(
+    primary = SapphirePrimaryDark,
+    onPrimary = SapphireOnPrimaryDark,
+    primaryContainer = SapphirePrimaryContainerDark,
+    onPrimaryContainer = SapphireOnPrimaryContainerDark,
+    secondary = SapphireSecondaryDark,
+    onSecondary = SapphireOnSecondaryDark,
+    secondaryContainer = SapphireSecondaryContainerDark,
+    onSecondaryContainer = SapphireOnSecondaryContainerDark,
+    tertiary = SapphirePrimaryDark,
+    onTertiary = SapphireOnPrimaryDark,
+    tertiaryContainer = SapphirePrimaryContainerDark,
+    onTertiaryContainer = SapphireOnPrimaryContainerDark,
+    background = BackgroundDark,
+    onBackground = OnBackgroundDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark
+)
+
 @Composable
 fun TareasTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Desactivado por defecto para respetar la paleta Sapphire nightfall whisper
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -42,6 +63,7 @@ fun TareasTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
+        darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
 

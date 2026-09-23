@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,8 +39,10 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.WarningAmber
@@ -75,6 +78,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -100,9 +104,8 @@ enum class FiltroEstado {
 
 /**
  * Pantalla principal de la lista de tareas.
- * Implementada con soporte responsivo para rotación de pantalla (Portrait y Landscape),
- * filtros desplegables horizontales, y acciones de sincronización y limpieza en la esquina inferior izquierda
- * con diálogo de confirmación para eliminar.
+ * Incluye filtros de estado, prioridad y categoría, eliminación de categorías con sus tareas,
+ * sección visual separada y colapsable para tareas hechas, y diálogo de confirmación para borrado individual.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,11 +121,14 @@ fun ListaTareasScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var filtroEstado by remember { mutableStateOf(FiltroEstado.TODAS) }
+    var prioridadSeleccionada by remember { mutableStateOf("Todas") }
     var categoriaSeleccionada by remember { mutableStateOf("Todas") }
     var busquedaQuery by remember { mutableStateOf("") }
     var busquedaVisible by remember { mutableStateOf(false) }
 
     var tareaParaEditar by remember { mutableStateOf<Tarea?>(null) }
+    var tareaParaEliminar by remember { mutableStateOf<Tarea?>(null) }
+    var categoriaParaEliminar by remember { mutableStateOf<String?>(null) }
     var mostrarDialogoAgregarEditar by remember { mutableStateOf(false) }
     var mostrarDialogoConfirmarEliminar by remember { mutableStateOf(false) }
 
@@ -132,14 +138,20 @@ fun ListaTareasScreen(
         (base + todasLasTareas.map { it.categoria }).distinct()
     }
 
-    // Filtrado en memoria
-    val tareasFiltradas = remember(todasLasTareas, filtroEstado, categoriaSeleccionada, busquedaQuery) {
+    // Filtrado en memoria por Estado, Prioridad, Categoría y Búsqueda
+    val tareasFiltradas = remember(todasLasTareas, filtroEstado, prioridadSeleccionada, categoriaSeleccionada, busquedaQuery) {
         todasLasTareas.filter { tarea ->
             val coincideEstado = when (filtroEstado) {
                 FiltroEstado.TODAS -> true
                 FiltroEstado.PENDIENTES -> !tarea.estadoCompletado
                 FiltroEstado.COMPLETADAS -> tarea.estadoCompletado
                 FiltroEstado.OFFLINE_PENDIENTE_SYNC -> !tarea.sincronizado
+            }
+
+            val coincidePrioridad = if (prioridadSeleccionada == "Todas") {
+                true
+            } else {
+                tarea.prioridad.equals(prioridadSeleccionada, ignoreCase = true)
             }
 
             val coincideCategoria = if (categoriaSeleccionada == "Todas") {
@@ -155,7 +167,7 @@ fun ListaTareasScreen(
                         tarea.descripcion.contains(busquedaQuery, ignoreCase = true)
             }
 
-            coincideEstado && coincideCategoria && coincideBusqueda
+            coincideEstado && coincidePrioridad && coincideCategoria && coincideBusqueda
         }
     }
 
@@ -176,7 +188,7 @@ fun ListaTareasScreen(
         }
     }
 
-    // Lambda para solicitar eliminación con confirmación previa
+    // Lambda para solicitar eliminación de hechas en lote
     val solicitarEliminarCompletadas: () -> Unit = {
         if (tareasCompletadas > 0) {
             mostrarDialogoConfirmarEliminar = true
@@ -214,7 +226,6 @@ fun ListaTareasScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-
                         }
                     }
                 },
@@ -238,9 +249,6 @@ fun ListaTareasScreen(
             )
         },
         bottomBar = {
-            // Barra inferior en modo vertical (Portrait):
-            // Acciones de Sincronizar y Eliminar Hechas en la ESQUINA INFERIOR IZQUIERDA
-            // y Botón FAB en la ESQUINA INFERIOR DERECHA
             if (!isLandscape) {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
@@ -256,7 +264,6 @@ fun ListaTareasScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Esquina Inferior Izquierda: Sincronizar y Eliminar Hechas
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -273,7 +280,6 @@ fun ListaTareasScreen(
                             )
                         }
 
-                        // Esquina Inferior Derecha: FAB Agregar Tarea
                         FloatingActionButton(
                             onClick = {
                                 tareaParaEditar = null
@@ -300,20 +306,15 @@ fun ListaTareasScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
 
-        // Adaptación ergonómica según la orientación (Landscape vs Portrait)
         if (isLandscape) {
-            // DISPOSICIÓN HORIZONTAL (Landscape): 2 Paneles
-            // Panel Izquierdo: Buscador, Métricas compactas, Filtros desplegables y Acciones en esquina inferior izquierda
-            // Panel Derecho: Lista de Tareas y FAB de Agregar
             Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                // Panel Izquierdo (Controlador y Métricas)
                 Column(
                     modifier = Modifier
-                        .width(320.dp)
+                        .width(340.dp)
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
                         .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 12.dp),
@@ -351,21 +352,24 @@ fun ListaTareasScreen(
                         compacto = true
                     )
 
-                    // Filtros desplegables organizados horizontalmente
                     FilaFiltrosDesplegables(
                         filtroEstado = filtroEstado,
                         onFiltroEstadoChange = { filtroEstado = it },
                         totalTareas = totalTareas,
                         tareasCompletadas = tareasCompletadas,
                         tareasSinSincronizar = tareasSinSincronizar,
+                        prioridadSeleccionada = prioridadSeleccionada,
+                        onPrioridadChange = { prioridadSeleccionada = it },
                         categoriaSeleccionada = categoriaSeleccionada,
                         onCategoriaChange = { categoriaSeleccionada = it },
-                        categoriasDisponibles = categoriasDisponibles
+                        categoriasDisponibles = categoriasDisponibles,
+                        onEliminarCategoria = { cat ->
+                            categoriaParaEliminar = cat
+                        }
                     )
 
                     Spacer(modifier = Modifier.weight(1f, fill = false))
 
-                    // Acciones en la esquina inferior izquierda para Landscape
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -396,7 +400,6 @@ fun ListaTareasScreen(
                     }
                 }
 
-                // Panel Derecho (Lista de Tareas con FAB flotante)
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -409,7 +412,6 @@ fun ListaTareasScreen(
                         totalTareas = totalTareas,
                         onToggleCompletado = { tarea ->
                             scope.launch {
-                                // Al modificar sin conexión, la tarea pasa a requerir sync
                                 repository.update(
                                     tarea.copy(
                                         estadoCompletado = !tarea.estadoCompletado,
@@ -423,15 +425,11 @@ fun ListaTareasScreen(
                             mostrarDialogoAgregarEditar = true
                         },
                         onEliminar = { tarea ->
-                            scope.launch {
-                                repository.delete(tarea)
-                                snackbarHostState.showSnackbar("Tarea eliminada de Room")
-                            }
+                            tareaParaEliminar = tarea
                         },
                         contentPadding = PaddingValues(bottom = 76.dp)
                     )
 
-                    // FAB en la esquina inferior derecha en Landscape
                     FloatingActionButton(
                         onClick = {
                             tareaParaEditar = null
@@ -455,13 +453,11 @@ fun ListaTareasScreen(
                 }
             }
         } else {
-            // DISPOSICIÓN VERTICAL (Portrait estándar)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                // Barra de búsqueda desplegable
                 AnimatedVisibility(
                     visible = busquedaVisible,
                     enter = expandVertically() + fadeIn(),
@@ -487,7 +483,6 @@ fun ListaTareasScreen(
                     )
                 }
 
-                // Tarjeta de Métricas y Estado Offline-First
                 if (totalTareas > 0) {
                     CardMetricas(
                         totalTareas = totalTareas,
@@ -498,21 +493,24 @@ fun ListaTareasScreen(
                     )
                 }
 
-                // Filtros desplegables organizados de forma horizontal
                 FilaFiltrosDesplegables(
                     filtroEstado = filtroEstado,
                     onFiltroEstadoChange = { filtroEstado = it },
                     totalTareas = totalTareas,
                     tareasCompletadas = tareasCompletadas,
                     tareasSinSincronizar = tareasSinSincronizar,
+                    prioridadSeleccionada = prioridadSeleccionada,
+                    onPrioridadChange = { prioridadSeleccionada = it },
                     categoriaSeleccionada = categoriaSeleccionada,
                     onCategoriaChange = { categoriaSeleccionada = it },
-                    categoriasDisponibles = categoriasDisponibles
+                    categoriasDisponibles = categoriasDisponibles,
+                    onEliminarCategoria = { cat ->
+                        categoriaParaEliminar = cat
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Lista de Tareas
                 ListaTareasContent(
                     tareasFiltradas = tareasFiltradas,
                     busquedaQuery = busquedaQuery,
@@ -532,10 +530,7 @@ fun ListaTareasScreen(
                         mostrarDialogoAgregarEditar = true
                     },
                     onEliminar = { tarea ->
-                        scope.launch {
-                            repository.delete(tarea)
-                            snackbarHostState.showSnackbar("Tarea eliminada de Room")
-                        }
+                        tareaParaEliminar = tarea
                     },
                     contentPadding = PaddingValues(
                         start = 16.dp,
@@ -548,7 +543,7 @@ fun ListaTareasScreen(
         }
     }
 
-    // Diálogo de Confirmación para Eliminar Tareas Completadas
+    // Diálogo de Confirmación para Eliminar Tareas Completadas (Lote)
     if (mostrarDialogoConfirmarEliminar) {
         AlertDialog(
             onDismissRequest = { mostrarDialogoConfirmarEliminar = false },
@@ -607,6 +602,128 @@ fun ListaTareasScreen(
         )
     }
 
+    // Diálogo de Confirmación para Eliminar Tarea Individual
+    if (tareaParaEliminar != null) {
+        val tareaActual = tareaParaEliminar!!
+        AlertDialog(
+            onDismissRequest = { tareaParaEliminar = null },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.WarningAmber,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "¿Eliminar esta tarea?",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Estás seguro de que deseas eliminar la tarea \"${tareaActual.titulo}\"? Esta acción no se puede deshacer.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            repository.delete(tareaActual)
+                            snackbarHostState.showSnackbar("Tarea eliminada correctamente")
+                        }
+                        tareaParaEliminar = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.testTag("btn_confirmar_eliminar_individual")
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { tareaParaEliminar = null },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.testTag("btn_cancelar_eliminar_individual")
+                ) {
+                    Text("Cancelar")
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.testTag("dialogo_confirmar_eliminar_individual")
+        )
+    }
+
+    // Diálogo de Confirmación para Eliminar Categoría y sus Tareas
+    if (categoriaParaEliminar != null) {
+        val catAEliminar = categoriaParaEliminar!!
+        val tareasEnCategoria = todasLasTareas.count { it.categoria.equals(catAEliminar, ignoreCase = true) }
+        AlertDialog(
+            onDismissRequest = { categoriaParaEliminar = null },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.WarningAmber,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "¿Eliminar categoría '$catAEliminar'?",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Text(
+                    text = "Se eliminará la categoría y las $tareasEnCategoria tareas asociadas a ella. Esta acción no se puede deshacer.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            repository.deleteByCategoria(catAEliminar)
+                            if (categoriaSeleccionada.equals(catAEliminar, ignoreCase = true)) {
+                                categoriaSeleccionada = "Todas"
+                            }
+                            snackbarHostState.showSnackbar("Categoría '$catAEliminar' y sus tareas eliminadas")
+                        }
+                        categoriaParaEliminar = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.testTag("btn_confirmar_eliminar_categoria")
+                ) {
+                    Text("Eliminar todo")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { categoriaParaEliminar = null },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.testTag("btn_cancelar_eliminar_categoria")
+                ) {
+                    Text("Cancelar")
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.testTag("dialogo_confirmar_eliminar_categoria")
+        )
+    }
+
     // Diálogo Modal para Agregar o Modificar Tarea
     if (mostrarDialogoAgregarEditar) {
         val tareaAEditarLocal = tareaParaEditar
@@ -651,9 +768,7 @@ fun ListaTareasScreen(
 }
 
 /**
- * Fila horizontal que contiene los 2 desplegables de filtro:
- * - Filtro de Estado (Todas, Pendientes, Hechas, Pendientes Sync)
- * - Filtro de Categoría (Todas, Universidad, Trabajo, etc.)
+ * Fila horizontal que contiene los desplegables de filtro: Estado, Prioridad y Categoría.
  */
 @Composable
 fun FilaFiltrosDesplegables(
@@ -662,16 +777,20 @@ fun FilaFiltrosDesplegables(
     totalTareas: Int,
     tareasCompletadas: Int,
     tareasSinSincronizar: Int,
+    prioridadSeleccionada: String,
+    onPrioridadChange: (String) -> Unit,
     categoriaSeleccionada: String,
     onCategoriaChange: (String) -> Unit,
     categoriasDisponibles: List<String>,
+    onEliminarCategoria: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Desplegable de Estado
         val textoEstado = when (filtroEstado) {
@@ -692,8 +811,19 @@ fun FilaFiltrosDesplegables(
                 FiltroEstado.OFFLINE_PENDIENTE_SYNC to "Offline / Sync ($tareasSinSincronizar)"
             ),
             onSeleccionar = onFiltroEstadoChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.width(155.dp),
             testTag = "desplegable_filtro_estado"
+        )
+
+        // Desplegable de Prioridad
+        MenuDesplegableFiltro(
+            label = "Prioridad",
+            valorSeleccionado = prioridadSeleccionada,
+            icono = Icons.Default.Flag,
+            opciones = listOf("Todas", "ALTA", "MEDIA", "BAJA").map { it to it },
+            onSeleccionar = onPrioridadChange,
+            modifier = Modifier.width(140.dp),
+            testTag = "desplegable_filtro_prioridad"
         )
 
         // Desplegable de Categoría
@@ -703,14 +833,15 @@ fun FilaFiltrosDesplegables(
             icono = Icons.Default.Category,
             opciones = categoriasDisponibles.map { it to it },
             onSeleccionar = onCategoriaChange,
-            modifier = Modifier.weight(1f),
+            onEliminarOpcion = onEliminarCategoria,
+            modifier = Modifier.width(160.dp),
             testTag = "desplegable_filtro_categoria"
         )
     }
 }
 
 /**
- * Componente reutilizable para menús desplegables de selección rápida.
+ * Componente reutilizable para menús desplegables de selección rápida con opción opcional de eliminación por ítem.
  */
 @Composable
 fun <T> MenuDesplegableFiltro(
@@ -719,6 +850,7 @@ fun <T> MenuDesplegableFiltro(
     icono: ImageVector,
     opciones: List<Pair<T, String>>,
     onSeleccionar: (T) -> Unit,
+    onEliminarOpcion: ((T) -> Unit)? = null,
     modifier: Modifier = Modifier,
     testTag: String = ""
 ) {
@@ -787,24 +919,53 @@ fun <T> MenuDesplegableFiltro(
         ) {
             opciones.forEach { (item, texto) ->
                 val esSeleccionado = texto == valorSeleccionado || texto.startsWith(valorSeleccionado)
+                val esTodas = texto == "Todas" || texto.startsWith("Todas")
                 DropdownMenuItem(
                     text = {
-                        Text(
-                            text = texto,
-                            fontWeight = if (esSeleccionado) FontWeight.Bold else FontWeight.Normal,
-                            color = if (esSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    leadingIcon = if (esSeleccionado) {
-                        {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (esSeleccionado) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                                Text(
+                                    text = texto,
+                                    fontWeight = if (esSeleccionado) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (esSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            if (onEliminarOpcion != null && !esTodas) {
+                                IconButton(
+                                    onClick = {
+                                        expandido = false
+                                        onEliminarOpcion(item)
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteOutline,
+                                        contentDescription = "Eliminar categoría",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
-                    } else null,
+                    },
                     onClick = {
                         onSeleccionar(item)
                         expandido = false
@@ -816,7 +977,7 @@ fun <T> MenuDesplegableFiltro(
 }
 
 /**
- * Botón para Sincronizar en la esquina inferior izquierda.
+ * Botón para Sincronizar en la esquina inferior izquierda (color verde sólido).
  */
 @Composable
 fun BotonSincronizar(
@@ -824,26 +985,28 @@ fun BotonSincronizar(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    FilledTonalButton(
+    Button(
         onClick = onClick,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = SyncOkContainer,
-            contentColor = SyncOkColor
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF1E5631), // Verde bosque sólido
+            contentColor = Color.White
         ),
         shape = RoundedCornerShape(12.dp),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
         modifier = modifier.testTag("btn_sincronizar_bottom_left")
     ) {
         Icon(
             imageVector = Icons.Default.CloudSync,
             contentDescription = "Sincronizar",
+            tint = Color.White,
             modifier = Modifier.size(18.dp)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = if (tareasSinSincronizar > 0) "Sync ($tareasSinSincronizar)" else "Sync",
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = Color.White
         )
     }
 }
@@ -899,7 +1062,7 @@ fun CardMetricas(
             .padding(horizontal = if (compacto) 0.dp else 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+            containerColor = MaterialTheme.colorScheme.primary
         )
     ) {
         Column(
@@ -917,12 +1080,12 @@ fun CardMetricas(
                         text = "Progreso del Taller",
                         style = if (compacto) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = androidx.compose.ui.graphics.Color.White
                     )
                     Text(
                         text = "$tareasCompletadas de $totalTareas finalizadas",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f)
                     )
                 }
 
@@ -930,7 +1093,7 @@ fun CardMetricas(
                     text = "${(ratioProgreso * 100).toInt()}%",
                     style = if (compacto) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = androidx.compose.ui.graphics.Color.White
                 )
             }
 
@@ -942,8 +1105,8 @@ fun CardMetricas(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f),
+                color = androidx.compose.ui.graphics.Color.White,
+                trackColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.3f),
                 strokeCap = StrokeCap.Round
             )
 
@@ -957,20 +1120,20 @@ fun CardMetricas(
                 Text(
                     text = "SQLite Local (Room)",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f)
                 )
 
                 if (tareasSinSincronizar > 0) {
                     Text(
                         text = "$tareasSinSincronizar por sincronizar",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = SyncPendienteColor
+                        color = androidx.compose.ui.graphics.Color.Yellow // Amarillo brillante para máxima visibilidad de pendientes de sync
                     )
                 } else {
                     Text(
                         text = "Todo sincronizado",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = SyncOkColor
+                        color = androidx.compose.ui.graphics.Color.White
                     )
                 }
             }
@@ -979,7 +1142,7 @@ fun CardMetricas(
 }
 
 /**
- * Contenido de la lista de tareas o estado vacío si no hay coincidencias.
+ * Contenido de la lista de tareas con separación visual y sección colapsable para tareas hechas.
  */
 @Composable
 fun ListaTareasContent(
@@ -992,6 +1155,10 @@ fun ListaTareasContent(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
+    val tareasPendientes = remember(tareasFiltradas) { tareasFiltradas.filter { !it.estadoCompletado } }
+    val tareasCompletadas = remember(tareasFiltradas) { tareasFiltradas.filter { it.estadoCompletado } }
+    var completadasExpandidas by remember { mutableStateOf(false) }
+
     if (tareasFiltradas.isEmpty()) {
         Box(
             modifier = modifier
@@ -1046,9 +1213,10 @@ fun ListaTareasContent(
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Tareas Pendientes
             items(
-                items = tareasFiltradas,
-                key = { it.id }
+                items = tareasPendientes,
+                key = { "pendiente_${it.id}" }
             ) { tarea ->
                 TareaItem(
                     tarea = tarea,
@@ -1057,7 +1225,75 @@ fun ListaTareasContent(
                     onEliminar = { onEliminar(tarea) }
                 )
             }
+
+            // Apartado visual / Separador colapsable para Tareas Completadas (Hechas)
+            if (tareasCompletadas.isNotEmpty()) {
+                item(key = "seccion_completadas_header") {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { completadasExpandidas = !completadasExpandidas }
+                            .testTag("card_seccion_completadas"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Tareas Completadas (${tareasCompletadas.size})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = if (completadasExpandidas) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                                contentDescription = if (completadasExpandidas) "Ocultar completadas" else "Mostrar completadas",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                if (completadasExpandidas) {
+                    items(
+                        items = tareasCompletadas,
+                        key = { "completada_${it.id}" }
+                    ) { tarea ->
+                        TareaItem(
+                            tarea = tarea,
+                            onToggleCompletado = { onToggleCompletado(tarea) },
+                            onEditar = { onEditar(tarea) },
+                            onEliminar = { onEliminar(tarea) }
+                        )
+                    }
+                }
+            }
         }
     }
 }
-
