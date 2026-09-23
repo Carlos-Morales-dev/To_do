@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -103,6 +104,7 @@ fun AgregarEditarTareaScreen(
         onDismissRequest = onDescartar,
         modifier = Modifier
             .fillMaxWidth()
+            .widthIn(max = 560.dp)
             .testTag("dialogo_agregar_editar_tarea"),
         shape = RoundedCornerShape(24.dp),
         title = {
@@ -128,18 +130,7 @@ fun AgregarEditarTareaScreen(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.OfflinePin,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Persistencia Room: Se almacena en SQLite local de inmediato (Offline-First).",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+
                     }
                 }
 
