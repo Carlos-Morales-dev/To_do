@@ -1,10 +1,8 @@
 package com.example.tareas.ui
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -22,8 +20,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -46,7 +42,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.tareas.data.Tarea
 import com.example.tareas.ui.theme.PrioridadAltaContainer
 import com.example.tareas.ui.theme.PrioridadBajaContainer
@@ -56,10 +51,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-/**
- * Pantalla / Diálogo para agregar o modificar una Tarea.
- * Implementada por Persona D en colaboración con Persona C.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AgregarEditarTareaScreen(
@@ -121,20 +112,6 @@ fun AgregarEditarTareaScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Mensaje formativo Offline-First
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                    }
-                }
-
-                // Campo Título (Obligatorio)
                 OutlinedTextField(
                     value = titulo,
                     onValueChange = {
@@ -156,7 +133,6 @@ fun AgregarEditarTareaScreen(
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                // Campo Descripción (Opcional)
                 OutlinedTextField(
                     value = descripcion,
                     onValueChange = { descripcion = it },
@@ -169,7 +145,6 @@ fun AgregarEditarTareaScreen(
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                // Selector de Prioridad
                 Column {
                     Text(
                         text = "Prioridad",
@@ -207,7 +182,6 @@ fun AgregarEditarTareaScreen(
                     }
                 }
 
-                // Selector de Categoría
                 Column {
                     Text(
                         text = "Categoría",
@@ -256,7 +230,6 @@ fun AgregarEditarTareaScreen(
                     }
                 }
 
-                // Fecha límite
                 Column {
                     Text(
                         text = "Fecha de Entrega / Límite",

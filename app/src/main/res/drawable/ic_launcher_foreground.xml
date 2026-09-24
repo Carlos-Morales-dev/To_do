@@ -1,8 +1,73 @@
-<?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/ic_todo_icon"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Hoja / Portapapeles de base en tono azul claro ejecutivo -->
+    <path
+        android:fillColor="#E8F0FE"
+        android:strokeColor="#C2D7FA"
+        android:strokeWidth="1.5"
+        android:pathData="M37,28 C34.8,28 33,29.8 33,32 L33,78 C33,80.2 34.8,82 37,82 L71,82 C73.2,82 75,80.2 75,78 L75,32 C75,29.8 73.2,28 71,28 Z" />
+
+    <!-- Clip superior del portapapeles en azul marino ejecutivo -->
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M48,24 C48,22.9 48.9,22 50,22 L58,22 C59.1,22 60,22.9 60,24 L62,28 L46,28 Z" />
+
+    <!-- Hendidura del clip superior -->
+    <path
+        android:fillColor="#E8F0FE"
+        android:pathData="M52,24.5 C52,24.2 52.2,24 52.5,24 L55.5,24 C55.8,24 56,24.2 56,24.5 L56,25.5 C56,25.8 55.8,26 55.5,26 L52.5,26 C52.2,26 52,25.8 52,25.5 Z" />
+
+    <!-- Lineas simples de tareas de la lista -->
+    <!-- Linea 1 -->
+    <path
+        android:strokeColor="#1976D2"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M40,36 L68,36" />
+
+    <!-- Linea 2 -->
+    <path
+        android:strokeColor="#94B6E8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M40,44 L64,44" />
+
+    <!-- Linea 3 -->
+    <path
+        android:strokeColor="#94B6E8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M40,52 L54,52" />
+
+    <!-- Linea 4 -->
+    <path
+        android:strokeColor="#94B6E8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M40,60 L48,60" />
+
+    <!-- Sombra sutil / bisel exterior del circulo de visto -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.12"
+        android:pathData="M63,49 A17,17 0 1,0 63,83 A17,17 0 1,0 63,49" />
+
+    <!-- Circulo en primer plano en azul ejecutivo oscuro -->
+    <path
+        android:fillColor="#0D47A1"
+        android:strokeColor="#1E88E5"
+        android:strokeWidth="2"
+        android:pathData="M62,48 A16,16 0 1,0 62,80 A16,16 0 1,0 62,48" />
+
+    <!-- Visto / Check minimalista en blanco puro -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M55,64 L60,69 L69,58" />
+</vector>

@@ -90,9 +90,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.tareas.data.Tarea
 import com.example.tareas.data.TareaRepository
-import com.example.tareas.ui.theme.SyncOkColor
-import com.example.tareas.ui.theme.SyncOkContainer
-import com.example.tareas.ui.theme.SyncPendienteColor
 import kotlinx.coroutines.launch
 
 enum class FiltroEstado {
@@ -102,17 +99,13 @@ enum class FiltroEstado {
     OFFLINE_PENDIENTE_SYNC
 }
 
-/**
- * Pantalla principal de la lista de tareas.
- * Incluye filtros de estado, prioridad y categoría, eliminación de categorías con sus tareas,
- * sección visual separada y colapsable para tareas hechas, y diálogo de confirmación para borrado individual.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListaTareasScreen(
     repository: TareaRepository,
     modifier: Modifier = Modifier
 ) {
+    // Manejo de estado reactivo que observa el flujo de datos desde Room y recompone la interfaz ante cualquier cambio
     val todasLasTareas by repository.todasLasTareas.collectAsStateWithLifecycle(initialValue = emptyList())
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -132,13 +125,11 @@ fun ListaTareasScreen(
     var mostrarDialogoAgregarEditar by remember { mutableStateOf(false) }
     var mostrarDialogoConfirmarEliminar by remember { mutableStateOf(false) }
 
-    // Categorías dinámicas derivadas de los registros en Room
     val categoriasDisponibles = remember(todasLasTareas) {
         val base = listOf("Todas", "Universidad", "Trabajo", "Proyectos", "Personal", "Urgente")
         (base + todasLasTareas.map { it.categoria }).distinct()
     }
 
-    // Filtrado en memoria por Estado, Prioridad, Categoría y Búsqueda
     val tareasFiltradas = remember(todasLasTareas, filtroEstado, prioridadSeleccionada, categoriaSeleccionada, busquedaQuery) {
         todasLasTareas.filter { tarea ->
             val coincideEstado = when (filtroEstado) {
@@ -176,7 +167,6 @@ fun ListaTareasScreen(
     val tareasSinSincronizar = todasLasTareas.count { !it.sincronizado }
     val ratioProgreso = if (totalTareas == 0) 0f else tareasCompletadas.toFloat() / totalTareas
 
-    // Lambda para sincronizar
     val ejecutarSincronizacion: () -> Unit = {
         scope.launch {
             val noSync = repository.getNoSincronizadas()
@@ -188,7 +178,6 @@ fun ListaTareasScreen(
         }
     }
 
-    // Lambda para solicitar eliminación de hechas en lote
     val solicitarEliminarCompletadas: () -> Unit = {
         if (tareasCompletadas > 0) {
             mostrarDialogoConfirmarEliminar = true
@@ -410,6 +399,7 @@ fun ListaTareasScreen(
                         tareasFiltradas = tareasFiltradas,
                         busquedaQuery = busquedaQuery,
                         totalTareas = totalTareas,
+                        // Callback para alternar el estado completado y actualizar la tarea en el almacenamiento local
                         onToggleCompletado = { tarea ->
                             scope.launch {
                                 repository.update(
@@ -420,10 +410,12 @@ fun ListaTareasScreen(
                                 )
                             }
                         },
+                        // Callback para asignar la tarea seleccionada y abrir el dialogo de edicion
                         onEditar = { tarea ->
                             tareaParaEditar = tarea
                             mostrarDialogoAgregarEditar = true
                         },
+                        // Callback para seleccionar la tarea que se desea eliminar tras confirmacion
                         onEliminar = { tarea ->
                             tareaParaEliminar = tarea
                         },
@@ -515,6 +507,7 @@ fun ListaTareasScreen(
                     tareasFiltradas = tareasFiltradas,
                     busquedaQuery = busquedaQuery,
                     totalTareas = totalTareas,
+                    // Callback para alternar el estado completado y actualizar la tarea en el almacenamiento local
                     onToggleCompletado = { tarea ->
                         scope.launch {
                             repository.update(
@@ -525,10 +518,12 @@ fun ListaTareasScreen(
                             )
                         }
                     },
+                    // Callback para asignar la tarea seleccionada y abrir el dialogo de edicion
                     onEditar = { tarea ->
                         tareaParaEditar = tarea
                         mostrarDialogoAgregarEditar = true
                     },
+                    // Callback para seleccionar la tarea que se desea eliminar tras confirmacion
                     onEliminar = { tarea ->
                         tareaParaEliminar = tarea
                     },
@@ -543,7 +538,7 @@ fun ListaTareasScreen(
         }
     }
 
-    // Diálogo de Confirmación para Eliminar Tareas Completadas (Lote)
+    // Diálogo de confirmación para eliminar tareas completadas en lote
     if (mostrarDialogoConfirmarEliminar) {
         AlertDialog(
             onDismissRequest = { mostrarDialogoConfirmarEliminar = false },
@@ -564,7 +559,7 @@ fun ListaTareasScreen(
             },
             text = {
                 Text(
-                    text = "Se eliminarán definitivamente las $tareasCompletadas tareas marcadas como completadas. Esta acción no se puede deshacer.",
+                    text = "Se eliminarán permanentemente las $tareasCompletadas tareas finalizadas. ¿Deseas continuar?",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -572,9 +567,8 @@ fun ListaTareasScreen(
                 Button(
                     onClick = {
                         scope.launch {
-                            val cantidad = tareasCompletadas
                             repository.eliminarCompletadas()
-                            snackbarHostState.showSnackbar("Se eliminaron $cantidad tareas completadas")
+                            snackbarHostState.showSnackbar("Tareas completadas eliminadas de Room")
                         }
                         mostrarDialogoConfirmarEliminar = false
                     },
@@ -585,7 +579,7 @@ fun ListaTareasScreen(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.testTag("btn_confirmar_eliminar_hechas")
                 ) {
-                    Text("Sí, eliminar ($tareasCompletadas)")
+                    Text("Eliminar todas")
                 }
             },
             dismissButton = {
@@ -602,7 +596,7 @@ fun ListaTareasScreen(
         )
     }
 
-    // Diálogo de Confirmación para Eliminar Tarea Individual
+    // Diálogo de confirmación para eliminar tarea individual
     if (tareaParaEliminar != null) {
         val tareaActual = tareaParaEliminar!!
         AlertDialog(
@@ -630,6 +624,7 @@ fun ListaTareasScreen(
             },
             confirmButton = {
                 Button(
+                    // Callback para eliminar definitivamente la tarea del repositorio local
                     onClick = {
                         scope.launch {
                             repository.delete(tareaActual)
@@ -661,7 +656,7 @@ fun ListaTareasScreen(
         )
     }
 
-    // Diálogo de Confirmación para Eliminar Categoría y sus Tareas
+    // Diálogo de confirmación para eliminar categoría y sus tareas
     if (categoriaParaEliminar != null) {
         val catAEliminar = categoriaParaEliminar!!
         val tareasEnCategoria = todasLasTareas.count { it.categoria.equals(catAEliminar, ignoreCase = true) }
@@ -724,7 +719,7 @@ fun ListaTareasScreen(
         )
     }
 
-    // Diálogo Modal para Agregar o Modificar Tarea
+    // Diálogo modal para agregar o modificar tarea
     if (mostrarDialogoAgregarEditar) {
         val tareaAEditarLocal = tareaParaEditar
         AgregarEditarTareaScreen(
@@ -732,6 +727,7 @@ fun ListaTareasScreen(
             onGuardar = { titulo, descripcion, categoria, prioridad, fechaLimite ->
                 scope.launch {
                     if (tareaAEditarLocal == null) {
+                        // Callback para insertar una nueva tarea en la base de datos local
                         val nuevaTarea = Tarea(
                             titulo = titulo,
                             descripcion = descripcion,
@@ -744,6 +740,7 @@ fun ListaTareasScreen(
                         repository.insert(nuevaTarea)
                         snackbarHostState.showSnackbar("Tarea guardada en Room exitosamente")
                     } else {
+                        // Callback para actualizar los datos de la tarea existente en la base de datos local
                         val tareaActualizada = tareaAEditarLocal.copy(
                             titulo = titulo,
                             descripcion = descripcion,
@@ -767,9 +764,6 @@ fun ListaTareasScreen(
     }
 }
 
-/**
- * Fila horizontal que contiene los desplegables de filtro: Estado, Prioridad y Categoría.
- */
 @Composable
 fun FilaFiltrosDesplegables(
     filtroEstado: FiltroEstado,
@@ -792,7 +786,6 @@ fun FilaFiltrosDesplegables(
             .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Desplegable de Estado
         val textoEstado = when (filtroEstado) {
             FiltroEstado.TODAS -> "Todas ($totalTareas)"
             FiltroEstado.PENDIENTES -> "Pendientes (${totalTareas - tareasCompletadas})"
@@ -815,7 +808,6 @@ fun FilaFiltrosDesplegables(
             testTag = "desplegable_filtro_estado"
         )
 
-        // Desplegable de Prioridad
         MenuDesplegableFiltro(
             label = "Prioridad",
             valorSeleccionado = prioridadSeleccionada,
@@ -826,7 +818,6 @@ fun FilaFiltrosDesplegables(
             testTag = "desplegable_filtro_prioridad"
         )
 
-        // Desplegable de Categoría
         MenuDesplegableFiltro(
             label = "Categoría",
             valorSeleccionado = categoriaSeleccionada,
@@ -840,9 +831,6 @@ fun FilaFiltrosDesplegables(
     }
 }
 
-/**
- * Componente reutilizable para menús desplegables de selección rápida con opción opcional de eliminación por ítem.
- */
 @Composable
 fun <T> MenuDesplegableFiltro(
     label: String,
@@ -976,9 +964,6 @@ fun <T> MenuDesplegableFiltro(
     }
 }
 
-/**
- * Botón para Sincronizar en la esquina inferior izquierda (color verde sólido).
- */
 @Composable
 fun BotonSincronizar(
     tareasSinSincronizar: Int,
@@ -988,7 +973,7 @@ fun BotonSincronizar(
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF1E5631), // Verde bosque sólido
+            containerColor = Color(0xFF1E5631),
             contentColor = Color.White
         ),
         shape = RoundedCornerShape(12.dp),
@@ -1011,9 +996,6 @@ fun BotonSincronizar(
     }
 }
 
-/**
- * Botón para Eliminar tareas hechas en la esquina inferior izquierda.
- */
 @Composable
 fun BotonEliminarHechas(
     tareasCompletadas: Int,
@@ -1044,9 +1026,6 @@ fun BotonEliminarHechas(
     }
 }
 
-/**
- * Tarjeta de métricas con barra de progreso y estado Offline-First.
- */
 @Composable
 fun CardMetricas(
     totalTareas: Int,
@@ -1077,15 +1056,15 @@ fun CardMetricas(
             ) {
                 Column {
                     Text(
-                        text = "Progreso del Taller",
+                        text = "Progreso de Tareas",
                         style = if (compacto) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = androidx.compose.ui.graphics.Color.White
+                        color = Color.White
                     )
                     Text(
                         text = "$tareasCompletadas de $totalTareas finalizadas",
                         style = MaterialTheme.typography.bodySmall,
-                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f)
+                        color = Color.White.copy(alpha = 0.9f)
                     )
                 }
 
@@ -1093,7 +1072,7 @@ fun CardMetricas(
                     text = "${(ratioProgreso * 100).toInt()}%",
                     style = if (compacto) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = androidx.compose.ui.graphics.Color.White
+                    color = Color.White
                 )
             }
 
@@ -1103,37 +1082,37 @@ fun CardMetricas(
                 progress = { ratioProgreso },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = androidx.compose.ui.graphics.Color.White,
-                trackColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.3f),
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .testTag("progreso_metricas"),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.3f),
                 strokeCap = StrokeCap.Round
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = "SQLite Local (Room)",
                     style = MaterialTheme.typography.labelSmall,
-                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f)
+                    color = Color.White.copy(alpha = 0.8f)
                 )
 
                 if (tareasSinSincronizar > 0) {
                     Text(
                         text = "$tareasSinSincronizar por sincronizar",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = androidx.compose.ui.graphics.Color.Yellow // Amarillo brillante para máxima visibilidad de pendientes de sync
+                        color = Color.Yellow
                     )
                 } else {
                     Text(
                         text = "Todo sincronizado",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = androidx.compose.ui.graphics.Color.White
+                        color = Color.White
                     )
                 }
             }
@@ -1141,9 +1120,6 @@ fun CardMetricas(
     }
 }
 
-/**
- * Contenido de la lista de tareas con separación visual y sección colapsable para tareas hechas.
- */
 @Composable
 fun ListaTareasContent(
     tareasFiltradas: List<Tarea>,
@@ -1208,12 +1184,12 @@ fun ListaTareasContent(
             }
         }
     } else {
+        // Renderiza listas dinamicas de forma eficiente reciclando elementos visibles como un RecyclerView
         LazyColumn(
             modifier = modifier.fillMaxSize(),
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Tareas Pendientes
             items(
                 items = tareasPendientes,
                 key = { "pendiente_${it.id}" }
@@ -1226,7 +1202,6 @@ fun ListaTareasContent(
                 )
             }
 
-            // Apartado visual / Separador colapsable para Tareas Completadas (Hechas)
             if (tareasCompletadas.isNotEmpty()) {
                 item(key = "seccion_completadas_header") {
                     Spacer(modifier = Modifier.height(4.dp))

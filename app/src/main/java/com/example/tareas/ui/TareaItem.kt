@@ -60,10 +60,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Componente visual para cada Tarea en la lista.
- * Muestra el estado del ciclo de vida de los datos, prioridad, categoría y estado Offline-First.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TareaItem(
@@ -187,7 +183,6 @@ fun TareaItem(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Badges y metadatos: Prioridad, Categoría, Estado de Sync y Fecha
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -195,10 +190,8 @@ fun TareaItem(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Insignia de Prioridad
                 BadgePrioridad(prioridad = tarea.prioridad)
 
-                // Insignia de Categoría
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
@@ -211,7 +204,6 @@ fun TareaItem(
                     )
                 }
 
-                // Insignia Offline-First (Sincronizado vs Local)
                 if (tarea.sincronizado) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
@@ -266,7 +258,6 @@ fun TareaItem(
                     }
                 }
 
-                // Fecha límite si existe
                 tarea.fechaLimite?.let { limite ->
                     val fechaFormateada = SimpleDateFormat("d MMM, yyyy", Locale.getDefault()).format(Date(limite))
                     Surface(
